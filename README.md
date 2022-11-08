@@ -1,1 +1,1 @@
-# smokeDetector
+`MAVEN_OPTS="--enable-preview" ./mvnw package -DskipTests`

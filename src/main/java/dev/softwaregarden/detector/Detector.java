@@ -24,7 +24,6 @@ import java.math.*;
 import java.net.*;
 import java.nio.charset.*;
 import java.time.*;
-import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
@@ -38,7 +37,6 @@ public class Detector {
     public static void main(String[] args) throws IOException {
         System.out.println("starting=" + Instant.now());
         int port = Integer.parseInt(System.getenv("detector.port"));
-        String label = Optional.ofNullable(System.getenv("detector.label")).orElseGet(() -> UUID.randomUUID().toString());
 
         var detector = new Detector(port);
         detector.startOperating();
