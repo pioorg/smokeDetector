@@ -59,7 +59,7 @@ class DetectorTest {
                 .filter(s -> s.startsWith("start"))
                 .collect(toMap(s -> s.split("=")[0], s -> parse(s.split("=")[1])));
 
-            assertThat(events).containsKeys("started", "started");
+            assertThat(events).containsKeys("starting", "started");
             assertThat(container.getLogs()).contains("checking=");
             var startedDeadline = events.get("starting").plusSeconds(4);
             assertThat(events.get("started")).isBeforeOrEqualTo(startedDeadline);
