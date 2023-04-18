@@ -42,7 +42,8 @@ class DetectorTest {
     private final static MountableFile jar = MountableFile.forHostPath(Paths.get("target/detector-1.0-SNAPSHOT.jar"));
 
     private GenericContainer<?> createContainer() {
-        return new GenericContainer<>("eclipse-temurin:19-alpine")
+        //noinspection resource
+        return new GenericContainer<>("openjdk:20-slim")
             .withCopyFileToContainer(jar, "/tmp/detector.jar")
             .withExposedPorts(7890)
             .withEnv("detector.port", "7890")
@@ -56,7 +57,6 @@ class DetectorTest {
         try (var container = createContainer()) {
 
             container.start();
-            System.out.println(container.getLogs());
 
             var events = container.getLogs().lines()
                 .filter(s -> s.startsWith("start"))

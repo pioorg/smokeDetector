@@ -54,7 +54,7 @@ public class Detector {
             switch (exchange.getRequestMethod()) {
                 case "POST" -> captureParticle(new String(exchange.getRequestBody().readAllBytes()));
                 case "GET" -> response = prepareReport();
-                case default, null -> {
+                case null, default -> {
                     exchange.sendResponseHeaders(405, 0);
                     exchange.close();
                     return;
