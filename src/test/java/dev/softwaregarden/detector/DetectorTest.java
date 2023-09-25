@@ -43,11 +43,11 @@ class DetectorTest {
 
     private GenericContainer<?> createContainer() {
         //noinspection resource
-        return new GenericContainer<>("openjdk:20-slim")
+        return new GenericContainer<>("openjdk:21-slim")
             .withCopyFileToContainer(jar, "/tmp/detector.jar")
             .withExposedPorts(7890)
             .withEnv("detector.port", "7890")
-            .withCommand("java", "--enable-preview", "-jar", "/tmp/detector.jar");
+            .withCommand("java", "-jar", "/tmp/detector.jar");
     }
 
     @Test

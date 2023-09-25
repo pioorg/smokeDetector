@@ -9,7 +9,7 @@
     <url>https://softwaregarden.dev</url>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>20</maven.compiler.source>
+        <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
     </properties>
     <build>
@@ -19,19 +19,13 @@
                 <version>3.10.1</version>
                 <configuration>
                     <compilerArgs>
-                        <compilerArg>--enable-preview</compilerArg>
                         <compilerArg>-Xlint:all</compilerArg>
-                        <compilerArg>--add-modules</compilerArg>
-                        <compilerArg>jdk.incubator.concurrent</compilerArg>
                     </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.1.2</version>
-                <configuration>
-                    <argLine>--enable-preview</argLine>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
