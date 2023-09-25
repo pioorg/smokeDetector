@@ -25,8 +25,6 @@ import java.math.RoundingMode;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -86,7 +84,7 @@ public class Detector {
         // BAD CODE AHEAD! DO NOT DO YOUR PROD SYSTEM LIKE THIS! DEMO ONLY!
         var co = BigDecimal.valueOf(coParticlesDetected.get());
         var all = co.add(BigDecimal.valueOf(otherParticlesDetected.get()));
-        if (co.divide(all, RoundingMode.HALF_EVEN).compareTo(alarmLevel) > 0) {
+        if (!all.equals(BigDecimal.ZERO) && co.divide(all, RoundingMode.HALF_EVEN).compareTo(alarmLevel) > 0) {
             System.out.println("ALARM");
         }
     }

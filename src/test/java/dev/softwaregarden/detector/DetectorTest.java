@@ -72,7 +72,7 @@ class DetectorTest {
     }
 
     @Test
-    @Disabled
+//    @Disabled
     void shouldCheckAtLeastOncePerSecond() {
         try (var container = createContainer()) {
 
