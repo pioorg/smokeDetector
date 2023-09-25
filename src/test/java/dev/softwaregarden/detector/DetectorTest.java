@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.awaitility.core.ThrowingRunnable;
 import org.testcontainers.utility.MountableFile;
@@ -47,11 +48,12 @@ class DetectorTest {
             .withCopyFileToContainer(jar, "/tmp/detector.jar")
             .withExposedPorts(7890)
             .withEnv("detector.port", "7890")
-            .withCommand("java", "-jar", "/tmp/detector.jar");
+            .withCommand("java", "-jar", "/tmp/detector.jar")
+            .waitingFor(Wait.forLogMessage("^started=.*", 1));
     }
 
     @Test
-    @Disabled
+//    @Disabled
     void shouldStartInLessThan4Seconds() {
 
         try (var container = createContainer()) {
