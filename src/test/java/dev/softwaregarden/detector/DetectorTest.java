@@ -22,18 +22,24 @@ import static java.time.Duration.ofSeconds;
 import static java.time.Instant.parse;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.awaitility.core.ThrowingRunnable;
 import org.testcontainers.utility.MountableFile;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -41,14 +47,36 @@ class DetectorTest {
 
     private final static MountableFile jar = MountableFile.forHostPath(Paths.get("target/detector-1.0-SNAPSHOT.jar"));
 
+    private final static Path nativeArtifactPath = Path.of("artifact/detector.native");
+
+    private final MountableFile exe = MountableFile.forHostPath(nativeArtifactPath, 555);
+
     private GenericContainer<?> createContainer() {
         //noinspection resource
-        return new GenericContainer<>("openjdk:21-slim")
-            .withCopyFileToContainer(jar, "/tmp/detector.jar")
+        return new GenericContainer<>("alpine:3.18.3")
+            .withCopyFileToContainer(exe, "/tmp/detector")
+            .waitingFor(Wait.forLogMessage("^started=.*", 1))
             .withExposedPorts(7890)
             .withEnv("detector.port", "7890")
-            .withCommand("java", "-jar", "/tmp/detector.jar")
-            .waitingFor(Wait.forLogMessage("^started=.*", 1));
+            .withCommand("/tmp/detector");
+    }
+
+    @BeforeAll
+    static void createNativeImage() throws IOException {
+        Files.deleteIfExists(nativeArtifactPath);
+        Files.createDirectories(nativeArtifactPath.getParent());
+        //noinspection resource
+        GenericContainer<?> graalContainer = new GenericContainer<>("ghcr.io/graalvm/native-image-community:21")
+            .withCopyFileToContainer(jar, "/tmp/detector.jar")
+            .withCommand("--static", "-jar", "/tmp/detector.jar", "/tmp/artifact/detector.native")
+            .withFileSystemBind(nativeArtifactPath.getParent().toAbsolutePath().toString(), "/tmp/artifact", BindMode.READ_WRITE)
+            .waitingFor(Wait.forLogMessage("^Finished generating.*", 1))
+            .withStartupTimeout(Duration.ofSeconds(150));
+        try( graalContainer) {
+            graalContainer.start();
+        } finally {
+            System.out.println(graalContainer.getLogs());
+        }
     }
 
     @Test
