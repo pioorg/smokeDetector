@@ -22,7 +22,6 @@ import static java.time.Duration.ofSeconds;
 import static java.time.Instant.parse;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -94,7 +93,7 @@ class DetectorTest {
 
 
     @Test
-    @Disabled
+//    @Disabled
     void shouldAlarmAbove400PPM() throws InterruptedException {
 
         try (var container = createContainer()) {

@@ -84,7 +84,7 @@ public class Detector {
         // BAD CODE AHEAD! DO NOT DO YOUR PROD SYSTEM LIKE THIS! DEMO ONLY!
         var co = BigDecimal.valueOf(coParticlesDetected.get());
         var all = co.add(BigDecimal.valueOf(otherParticlesDetected.get()));
-        if (!all.equals(BigDecimal.ZERO) && co.divide(all, RoundingMode.HALF_EVEN).compareTo(alarmLevel) > 0) {
+        if (!all.equals(BigDecimal.ZERO) && co.divide(all, alarmLevel.scale(), RoundingMode.HALF_EVEN).compareTo(alarmLevel) > 0) {
             System.out.println("ALARM");
         }
     }
