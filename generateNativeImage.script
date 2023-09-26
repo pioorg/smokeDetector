@@ -1,0 +1,52 @@
+#!/usr/bin/env -S java --enable-preview --source 21 -cp "lib/*" -Dlogback.configurationFile=lib/logback.xml
+
+import org.testcontainers.containers.Container.ExecResult;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
+import org.testcontainers.shaded.org.awaitility.core.ThrowingRunnable;
+import org.testcontainers.utility.MountableFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+class GenerateNativeImage {
+
+    private final static MountableFile jar = MountableFile.forHostPath(Paths.get("target/detector-1.0-SNAPSHOT.jar"));
+
+    private final static Path nativeArtifactPath = Path.of("artifact/detector.native");
+
+    void main() throws IOException {
+      createNativeImage();
+    }
+
+    static void createNativeImage() throws IOException {
+        Files.deleteIfExists(nativeArtifactPath);
+        Files.createDirectories(nativeArtifactPath.getParent());
+        //noinspection resource
+        GenericContainer<?> graalContainer = new GenericContainer<>("ghcr.io/graalvm/native-image-community:21")
+            .withCreateContainerCmdModifier(createCmd -> createCmd.withEntrypoint("/bin/sleep", "infinity"))
+            .withReuse(true);
+        try {
+            graalContainer.start();
+
+            graalContainer.copyFileToContainer(jar, "/tmp/detector.jar");
+
+            ExecResult execResult = graalContainer.execInContainer(
+                "/bin/native-image", "--static", "-jar", "/tmp/detector.jar", "/tmp/detector.native");
+
+            if (execResult.getExitCode() == 0) {
+                graalContainer.copyFileFromContainer("/tmp/detector.native", nativeArtifactPath.toString());
+            } else {
+                throw new RuntimeException("Cannot create the native artifact \n" + execResult.getStdout());
+            }
+        } catch (Exception e) {
+//            System.out.println(graalContainer.getLogs());
+            throw new RuntimeException(e);
+        }
+    }
+}
+
+
