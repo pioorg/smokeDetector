@@ -24,7 +24,7 @@ import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.BindMode;
+import org.testcontainers.containers.Container.ExecResult;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
@@ -39,7 +39,6 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -67,15 +66,24 @@ class DetectorTest {
         Files.createDirectories(nativeArtifactPath.getParent());
         //noinspection resource
         GenericContainer<?> graalContainer = new GenericContainer<>("ghcr.io/graalvm/native-image-community:21")
-            .withCopyFileToContainer(jar, "/tmp/detector.jar")
-            .withCommand("--static", "-jar", "/tmp/detector.jar", "/tmp/artifact/detector.native")
-            .withFileSystemBind(nativeArtifactPath.getParent().toAbsolutePath().toString(), "/tmp/artifact", BindMode.READ_WRITE)
-            .waitingFor(Wait.forLogMessage("^Finished generating.*", 1))
-            .withStartupTimeout(Duration.ofSeconds(150));
-        try( graalContainer) {
+            .withCreateContainerCmdModifier(createCmd -> createCmd.withEntrypoint("/bin/sleep", "infinity"))
+            .withReuse(true);
+        try {
             graalContainer.start();
-        } finally {
-            System.out.println(graalContainer.getLogs());
+
+            graalContainer.copyFileToContainer(jar, "/tmp/detector.jar");
+
+            ExecResult execResult = graalContainer.execInContainer(
+                "/bin/native-image", "--static", "-jar", "/tmp/detector.jar", "/tmp/detector.native");
+
+            if (execResult.getExitCode() == 0) {
+                graalContainer.copyFileFromContainer("/tmp/detector.native", nativeArtifactPath.toString());
+            } else {
+                throw new RuntimeException("Cannot create the native artifact \n" + execResult.getStdout());
+            }
+        } catch (Exception e) {
+//            System.out.println(graalContainer.getLogs());
+            throw new RuntimeException(e);
         }
     }
 
