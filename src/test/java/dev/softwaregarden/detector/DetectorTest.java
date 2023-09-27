@@ -24,11 +24,16 @@ import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.TestWatcher;
 import org.testcontainers.containers.Container.ExecResult;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.awaitility.core.ThrowingRunnable;
+import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
 import java.io.IOException;
@@ -42,25 +47,16 @@ import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+@ExtendWith(DetectorTest.AfterAllExtension.class)
 class DetectorTest {
 
     private final static MountableFile jar = MountableFile.forHostPath(Paths.get("target/detector-1.0-SNAPSHOT.jar"));
 
     private final static Path nativeArtifactPath = Path.of("artifact/detector.native");
 
-    private final MountableFile exe = MountableFile.forHostPath(nativeArtifactPath, 555);
+    // TODO you might need to replace these ;-)
+    private final static DockerImageName DOCKER_IMAGE_NAME = DockerImageName.parse("pioorg/smoke-detector:latest");
 
-    private GenericContainer<?> createContainer() {
-        //noinspection resource
-        return new GenericContainer<>("alpine:3.18.3")
-            .withCopyFileToContainer(exe, "/tmp/detector")
-            .waitingFor(Wait.forLogMessage("^started=.*", 1))
-            .withExposedPorts(7890)
-            .withEnv("detector.port", "7890")
-            .withCommand("/tmp/detector");
-    }
-
-    @BeforeAll
     static void createNativeImage() throws IOException {
         Files.deleteIfExists(nativeArtifactPath);
         Files.createDirectories(nativeArtifactPath.getParent());
@@ -87,11 +83,25 @@ class DetectorTest {
         }
     }
 
+    @BeforeAll
+    static void prepareImage() throws IOException {
+        createNativeImage();
+        try (var container = new GenericContainer<>("alpine:3.18.3")
+            .withCopyFileToContainer(MountableFile.forHostPath(nativeArtifactPath, 555), "/tmp/detector")
+            .waitingFor(Wait.forLogMessage("^started=.*", 1))
+            .withExposedPorts(7890)
+            .withEnv("detector.port", "7890")
+            .withCommand("/tmp/detector")) {
+            container.start();
+            DockerHelper.tagImage(container, DOCKER_IMAGE_NAME);
+        }
+    }
+
     @Test
 //    @Disabled
     void shouldStartInLessThan4Seconds() {
 
-        try (var container = createContainer()) {
+        try (var container = new SmokeDetectorContainer(DOCKER_IMAGE_NAME)) {
 
             container.start();
 
@@ -109,7 +119,7 @@ class DetectorTest {
     @Test
 //    @Disabled
     void shouldCheckAtLeastOncePerSecond() {
-        try (var container = createContainer()) {
+        try (var container = new SmokeDetectorContainer(DOCKER_IMAGE_NAME)) {
 
             container.start();
 
@@ -132,7 +142,7 @@ class DetectorTest {
 //    @Disabled
     void shouldAlarmAbove400PPM() throws InterruptedException {
 
-        try (var container = createContainer()) {
+        try (var container = new SmokeDetectorContainer(DOCKER_IMAGE_NAME)) {
 
             container.start();
 
@@ -164,6 +174,31 @@ class DetectorTest {
         }
     }
 
+    static class AfterAllExtension implements AfterAllCallback, TestWatcher {
+
+        private boolean someTestsFailed;
+
+        public AfterAllExtension() {
+        }
+
+        @Override
+        public void testFailed(ExtensionContext context, Throwable cause) {
+            someTestsFailed = true;
+        }
+
+        @Override
+        public void afterAll(ExtensionContext extensionContext) throws Exception {
+            if (someTestsFailed) {
+                System.out.println("Some test(s) failed, not pushing the image");
+            }
+
+            try (var container = new SmokeDetectorContainer(DOCKER_IMAGE_NAME)) {
+                container.start();
+                DockerHelper.pushImage(container, DOCKER_IMAGE_NAME);
+                System.out.println("==== IMAGE PUSHED ====");
+            }
+        }
+    }
 }
 
 interface SneakyRunner {
